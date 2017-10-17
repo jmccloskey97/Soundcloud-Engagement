@@ -1,0 +1,416 @@
+---
+title: "Final Project"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+Over the past decade, a variety of different creative outlets for creating and producing music through the means of social media have been constructed. A particular site, Soundcloud, has been especially important in this recent surge of interest in the realm of Electronic Dance Music (EDM). Soundcloud has ultimately lead to the ability for anyone around the world to share their music without the rigid requirements and licenses necessary for other applications like Apple Music and Spotify. However, with this universal ability for all to have their own chance at finding success in the music industry, it has become increasingly more difficult to get yourself out there. There are 12 hours of music uploaded every minute. With such immense competition one crucial question arises: How can you engage users of the application utilizing the Soundcloud interface and find the ability to create the next most popular electronic dance song?
+
+What initially inspired me to research into this topic was a friend of mine from high school who randomly found an interest in becoming a DJ and creating music. He decided that soundcloud was his best means of becoming "known" in the community. However, this desire has become a commonality with teenagers across the United States as the availability to produce and create has become far more accessible to all through the means of applications like Soundcloud. With this, I became curious and always wanted to see what aspects of Soundcloud people could take advantage of to truly create the new best EDM song.
+
+I created a sample of 75 different electronic dance songs by searching within my own “likes” on the Soundcloud. I attempted to diversify each entry by a variety of factors while ensuring that they all fell into the realm of EDM music. I did this by filtering these songs by the keyword “EDM.” I utilized Excel and manually input the song data to create my final dataset using the information available on the Soundcloud website for a given track. I avoided any missing data issues by only choosing tracks with all the information I needed.
+
+Since my variables are not entirely self-explanatory, here is a description for each one:
+
+Name: The name of the song as it is presented on Soundcloud
+Artist: The name of the artist of the song as it is presented on Soundcloud
+Likes: The number of likes a song has
+Com: The number of comments posted on the song
+Rep: The number of reposts of the song. “Reposting” is publishing the track onto your own profile without actually posting the track yourself while still giving all credit to the original artist. 
+engage: A variable I created to assess the success of a particular song. It is engagement The number is the total number of plays divided by the amount of total likes, comments, and reposts
+LiCount: The total number of times the song has been played
+FreeD: The availability to download the song for free. "Yes" if it could be downloaded for free, "No" if not
+Mon: The month the song was published
+Year: The year the song was published
+FoCount: The number of followers the artist who posted the song has
+NumTags: The number of hashtags utilized
+Len: The length of the song in seconds
+NumTracks: The number of total tracks an artist has posted
+ProUser: If the artist has purchased the “Soundcloud Pro” plan. "Yes" if the artist was a user, "No" if not
+NumFollow: The number of users an artist is following
+Remix: If the song is a remix or radio-edit of another song. "Yes" if it was a remix, "No" if not
+Loc: The state in which the song was published. “O” if outside the country
+sincerelease: The amount of time, in months, in comparison to May 2017 since the song has been published
+
+```{r}
+library(lattice)
+songs = read.csv("SoundcloudData.csv")
+attach(songs)
+
+###Center variables
+songs$lencent = songs$Len - mean(songs$Len)
+
+###Create dummy variables for binary variables
+n = 75
+
+# Indicator for whether the song is a remix
+songs$RemixY = rep(0, n)
+songs$RemixY[songs$Remix == "Yes"] = 1
+
+# Indicator for whether the user has a pro subscription
+songs$pro = rep(0, n)
+songs$pro[songs$ProUser == "Yes"] = 1
+
+# Indicator for whether the song is a free download or now
+songs$fdY = rep(0, n)
+songs$fdY[songs$FreeD == "Yes"] = 1
+
+###Create Month and Year variables in order to create later sincerelease variable
+songs$Month = rep(0, n)
+songs$Month[songs$Mon == "January"] = 4
+songs$Month[songs$Mon == "February"] = 3
+songs$Month[songs$Mon == "March"] = 2
+songs$Month[songs$Mon == "April"] = 1
+songs$Month[songs$Mon == "May"] = 0
+songs$Month[songs$Mon == "June"] = 1
+songs$Month[songs$Mon == "July"] = 2
+songs$Month[songs$Mon == "August"] = 3
+songs$Month[songs$Mon == "September"] = 4
+songs$Month[songs$Mon == "October"] = 5
+songs$Month[songs$Mon == "November"] = 6
+songs$Month[songs$Mon == "December"] = 7
+
+songs$Y = rep(0, n)
+songs$Y[songs$Year == "2014"] = 3
+songs$Y[songs$Year == "2015"] = 2
+songs$Y[songs$Year == "2016"] = 1
+songs$Y[songs$Year == "2017"] = 0
+
+###Create sincerelease variable
+
+songs$sincerelease = abs(5 - songs$Month + 12*songs$Y)
+hist(songs$sincerelease)
+
+###Create dummy variables for seasons
+
+n = 75
+
+songs$winter = rep(0, n)
+songs$winter[songs$Mon == "December"] = 1
+songs$winter[songs$Mon == "January"] = 1
+songs$winter[songs$Mon == "February"] = 1
+songs$spring = rep(0, n)
+songs$spring[songs$Mon == "March"] = 1
+songs$spring[songs$Mon == "April"] = 1
+songs$spring[songs$Mon == "May"] = 1
+songs$summer = rep(0, n)
+songs$summer[songs$Mon == "June"] = 1
+songs$summer[songs$Mon == "July"] = 1
+songs$summer[songs$Mon == "August"] = 1
+songs$fall = rep(0, n)
+songs$fall[songs$Mon == "September"] = 1
+songs$fall[songs$Mon == "October"] = 1
+songs$fall[songs$Mon == "November"] = 1
+
+```
+
+Here I created another variable that I thought would be potentially accurate predictors of engagement, called "sincerelease," which is the amount of time, in months, in comparison to May 2017 since the song has been published. I created dummy variables for each season in hopes that these time periods may have some power in predicting engagement and also dummy variables for my predictors that were "Yes or No" predictors.
+
+#Exploratory Data Analysis
+
+```{r}
+###Create engagement variable
+denom = songs$Likes + songs$Com*3 + songs$Rep*2
+songs$denom = denom
+songs$engage = songs$LiCount/songs$denom
+
+###Check for necessarry transformations
+hist(songs$engage)
+
+#Check to see how many songs are published inside compared to outside the United States
+songs$country = rep(0, n)
+songs$country[songs$Loc == "O"] = 1
+
+###Summary of numerical variables
+FCsum <- data.frame(FollowerCount = c(mean = mean(FoCount),sd = sd(FoCount)))
+NTsum <- data.frame(NumberOfTags = c(mean = mean(NumTags),sd = sd(NumTags)))
+LNsum <- data.frame(SongLength = c(mean = mean(Len),sd = sd(Len)))
+NTsum <- data.frame(NumberOfTracks = c(mean = mean(NumTracks),sd = sd(NumTracks)))
+NFsum <- data.frame(NumberOfFollowing= c(mean = mean(NumFollow),sd = sd(NumFollow)))
+Esum <- data.frame(Engagement= c(mean = mean(songs$engage),sd = sd(songs$engage)))
+
+cbind(FCsum, NTsum, LNsum, NTsum, NFsum, Esum)
+
+###Summary of categorical variables
+table(songs$FreeD)/75
+table(songs$winter)/75
+table(songs$spring)/75
+table(songs$summer)/75
+table(songs$fall)/75
+table(songs$ProUser)/75
+table(songs$Remix)/75
+table(songs$country)/75
+
+boxplot(songs$engage~songs$FreeD, data = songs, ylab = "Engagement", xlab = "Availability to Download")
+boxplot(songs$engage~songs$Mon, data = songs, ylab = "Engagement", xlab = "Month of Publication")
+boxplot(songs$engage~songs$Year, data = songs, ylab = "Engagement", xlab = "Year of Publication")
+boxplot(songs$engage~songs$ProUser, data = songs, ylab = "Engagement", xlab = "Artists with Soundcloud Pro Plan")
+boxplot(songs$engage~songs$country, data = songs, ylab = "Engagement", xlab = "Country of Publication")
+boxplot(songs$engage~songs$Remix, data = songs, ylab = "Engagement", xlab = "Remix/Radio-Edit")
+
+plot(y = songs$engage, x = songs$NumTags)
+plot(y = songs$engage, x = songs$Len)
+
+###Transformations
+
+plot(y = songs$engage, x = songs$FoCount, xlab = "Follower Count", ylab = "Engagement", main = "Follower Count vs. Engagement")
+#data centered around 0. Need to log transform
+songs$logfc = log(songs$FoCount)
+plot(y = songs$engage, x = songs$logfc, xlab = "Log of Follower Count", ylab = "Engagement", main = "Log of Follower Count vs. Engagement")
+
+plot(y = songs$engage, x = songs$NumTracks, xlab = "Number of Tracks", ylab = "Engagement", main = "Number of Tracks vs. Engagement")
+#data again centered around 0. Need to log transform
+songs$lognt = log(songs$NumTracks)
+plot(y = songs$engage, x = songs$lognt, xlab = "Log of Number of Tracks", ylab = "Engagement", main = "Log Number of Tracks vs. Engagement")
+
+plot(y = songs$engage, x = songs$NumFollow, xlab = "Number of Following", ylab = "Engagement", main = "Number of Following vs. Engagement")
+#somewhat linear, slightly packed around 0. try a log transformation
+songs$lognf = log(songs$NumFollow + 0.01)
+plot(y = songs$engage, x = songs$lognf, xlab = "Log of Number of Following", ylab = "Engagement", main = "Log of Number of Following vs. Engagement")
+
+#Interactions and Collinearity
+plot(y = songs$logfc, x = songs$lognt, xlab = "Log of Follower Count", ylab = "Log of Number of Tracks", main = "Log of Follower Count vs. Log of Number of Tracks")
+#Check correlation. Plot seems like the two are somewhat associated
+cor(songs$logfc, songs$lognt)
+#Correlation is somewhat high. Try creating a model with 1. nt and nf and 2. with nf and fc and compare them. Pick the better one as the starting model.
+
+plot(y = songs$logfc, x = songs$NumTags)
+plot(y = songs$lencent, x = songs$NumTags)
+plot(y = songs$logfc, x = songs$lognf)
+plot(y = songs$logfc, x = songs$Remix)
+plot(x = songs$ProUser, y = songs$lognf)
+plot(y = songs$ProUser, x = songs$FreeD)
+plot(x = songs$Loc, y = songs$lognt)
+plot(x = songs$Loc, y = songs$logfc)
+plot(x = songs$Loc, y = songs$lognf)
+
+xyplot(songs$engage~songs$logfc | songs$country, data = songs)
+xyplot(songs$engage~songs$lognt | songs$country, data = songs)
+xyplot(songs$engage~songs$lognf | songs$country, data = songs)
+xyplot(songs$engage~songs$logfc | songs$FreeD, data = songs)
+xyplot(songs$engage~songs$lognt | songs$FreeD, data = songs)
+xyplot(songs$engage~songs$lognf | songs$FreeD, data = songs)
+xyplot(songs$engage~songs$logfc | songs$sincerelease, data = songs)
+xyplot(songs$engage~songs$lognt | songs$sincerelease, data = songs)
+xyplot(songs$engage~songs$lognf | songs$sincerelease, data = songs)
+```
+
+The main reason for obtaining the number of likes, comments, reposts and number of plays was to create this variable called "engage" which ultimately gauges the success of a particular song. A soundcloud user just by clicking the play button on a particular song or having the song randomly come on next on shuffle will add to the play count even if he or she immediately clicks away. Therefore, to tell if a song is truly doing well or not, its crucial to check the "engagement" of the track with its audience. By commenting, reposting, or liking a particular song we can tell a user has shown particular interest in the track; he or she simply hasnt just clicked the play button. However, the level of engagement varies by each action. Liking dipslays the least amount of engagement as it basically just telling yourself that you are a fan of the track. Reposting, on the other hand, displays higher engagement because you enjoy the track enough that you want your followers to listen to it as well. However, commenting takes the most engagement because you are taking the time to express to the artist either how much you liked or disliked the track. This action also takes the most time to complete. Due to this, I added different multipliers to each of the variables in the engagement equation. By dividing the total number of plays by each of these variables I hoped to create a standardized variable to compare each track to eachother based on engagement with users throughout the application.
+
+With this particular gauge, the lower the number of “engagement” the better. The closer the value is to 1 (the total number of plays divided by the denominator is exactly the same), the proportion of people who engage with the track increases. The difference between smaller values, like 1 and 2 for example, is extremely large; the engagement decreases by 50%. As the values become larger, the difference between two becomes far less significant. 1000/1 & 1000/2 is an extreme difference while 1000/15 and 1000/16 is not nearly as large of a change.
+
+The summary statistics (mean and standard deviation/percentage) of each variable are presented above. Using the correlation function, I checked to see if any of the predictor variables were highly associated with one another. To no particular surprise, I found nothing significant or concerning in the table.
+
+However, when checking the plots of a few continuous variables, I discovered the need for transformation. For Follower Count, Number of Tracks, and Number Following, the datapoints were closely packed towards the left side of the graph, indicating the need for a logarithmic transformation. Follower Count and Number of Tracks both show a far more linear relationship, however not strong, while Number Following is somewhat more linear. I decided for keep each of these variables transformed to utilize in my regression model attempts.
+
+### Multiple Regression
+```{r}
+###Model 1: Full
+songsreg = lm(engage ~ sincerelease + fdY + summer + fall + winter + NumTags + lencent + pro + RemixY + lognf + logfc + country, data = songs)
+summary(songsreg)
+
+songscheck = lm(engage ~ sincerelease + fdY + summer + fall + winter + NumTags + lencent + pro + RemixY + lognf + lognt + country, data = songs)
+summary(songscheck)
+
+anova(songsreg, songscheck)
+
+songs1 = songscheck
+coef(songs1)
+
+###Model 2: Dropped "pro"
+
+songsreg2 = lm(engage ~ sincerelease + fdY + summer + fall + winter + NumTags + lencent + RemixY + lognf + lognt + country, data = songs)
+summary(songsreg2)
+
+anova(songs1, songsreg2, test = "Chisq")
+
+###Model 3: Dropped "lognf"
+
+songsreg3 = lm(engage ~ sincerelease + fdY + summer + fall + winter + NumTags + lencent + RemixY + lognt + country, data = songs)
+summary(songsreg3)
+
+anova(songsreg3, songsreg2, test = "Chisq")
+
+###Model 5: Dropped "country"
+
+songsreg4 = lm(engage ~ sincerelease + fdY + summer + fall + winter + NumTags + lencent + RemixY + lognt, data = songs)
+summary(songsreg4)
+
+anova(songsreg4, songsreg3, test = "Chisq")
+
+###Model 6: Dropped "lognt"
+
+songsreg5 = lm(engage ~ sincerelease + fdY + summer + fall + winter + NumTags + lencent + RemixY, data = songs)
+summary(songsreg5)
+
+anova(songsreg5, songsreg4, test = "Chisq")
+
+###Model 7: Dropped "fdY"
+
+songsreg6 = lm(engage ~ sincerelease + summer + fall + winter + NumTags + lencent + RemixY, data = songs)
+summary(songsreg6)
+
+anova(songsreg5, songsreg6, test = "Chisq")
+
+###Final Model: Dropped "RemixY"
+
+songsreg7 = lm(engage ~ sincerelease + summer + fall + winter + NumTags + Len, data = songs)
+summary(songsreg7)
+
+anova(songsreg7, songsreg6, test = "Chisq")
+
+songsfinal = songsreg6
+summary(songsfinal)
+confint(songsfinal)
+```
+
+In order to make a start on my modeling process, I decided to include every single explanatory variable in order to predict the amount of engagement. Due to the high correlation between the two variables that I looked at in my EDA, I made two seperate models including (one including nf and nt and the other including nf and fc) and picked the starting model based on the one which provided me with a higher R-squared value considering the predictors were essentially the same (the anova between the two showed no difference). I ended up creating a total of 8 different models before ending up with my final model. Checking the signficance of particular predictors and utilizing the anova command, I decided to drop the predictors for if the artist was a professional user, the log follower count/number following/number of tracks, and the country it was released in. I ultimately decided to keep if the song was a remix or not as a predictor because it makes sense for final interpretation although it is not statistically significant. I used spring as the baseline for the season predictor.
+
+With the predictors I am using I didn't expect to have any interactions between any two variables. Using the lattice library and xyplots, I checked for interactions between all categorical variables and found nothing significant. All of the variables that may have had potential for interactions were eventually dropped anyway.
+
+###Leverage and Cooks Distance
+```{r}
+leverage = hatvalues(songsfinal)
+cooks = cooks.distance(songsfinal)
+
+d2 = cbind(songs, leverage, cooks)
+
+hist(leverage, title = "Leverage values for songs regression")
+d2[d2$leverage > .3,]
+
+hist(cooks)
+d2[d2$cooks > .15,]
+
+songsdif = songs[-18,]
+songsdif = songsdif[-56,]
+
+songsdif$centeredl = songsdif$Len - mean(songsdif$Len)
+
+songsfinaldif = lm(engage ~ sincerelease + summer + fall + winter + NumTags + Len, data = songsdif)
+summary(songsfinaldif)
+summary(songsfinal)
+```
+
+In order to finish my final model, I decided to look if there were any potential leverage points that I could take out to increase the predicting power of my regression model. Checking the leverage and cooks distance values, I noticed that three particular points ("Bad" & "I Wanna Know") had particularly high values in both of those categories. I decided to take these points out and re-run the regression model. Taking out these specific points actually decreased my R-squared value by 0.2 and there was no significant impact on the standard errors of each of the predictor variables.
+
+###Checking the Model
+```{r}
+plot(songsfinal$resid, x=NumTags, ylab = "Residuals", xlab = "Number of Tags") + abline(0,0)
+plot(songsfinal$resid, x=songs$lencent, ylab = "Residuals", xlab = "Length") + abline(0,0)
+plot(songsfinal$resid, x=songs$logfc, ylab = "Residuals", xlab = "Log of Follower Count") + abline(0,0)
+plot(songsfinal$resid, x=songs$lognt, ylab = "Residuals", xlab = "Log of Number of Tracks") + abline(0,0)
+plot(songsfinal$resid, x=songs$lognf, ylab = "Residuals", xlab = "Log of Number of Following") + abline(0,0)
+
+boxplot(songsfinal$resid~songs$winter, ylab = "Residuals", xlab = "Winter")
+boxplot(songsfinal$resid~songs$summer, ylab = "Residuals", xlab = "Summer")
+boxplot(songsfinal$resid~songs$spring, ylab = "Residuals", xlab = "Spring")
+boxplot(songsfinal$resid~songs$fall, ylab = "Residuals", xlab = "Fall")
+boxplot(songsfinal$resid~songs$RemixY, ylab = "Residuals", xlab = "Remix")
+
+summary(songsfinal)
+confint(songsfinal)
+```
+
+Looking at the residuals versus all predictors, both continuous and categorical, each plot maintains a random scatter with constant variance. Although the explanatory power of the model is pretty low -- the R-squared value is 34.24% -- we can be fairly confident that this model is the best possible model given the data available.
+
+After this inference process, it appears there are only a few out of the total variables that are helpful in predicting the success of a particular Soundcloud track. These are: The time elapsed since it was released, the season it was released, the number of tags utilized, the length of the song, and if the song was a remix/ radio-edit or not.
+
+For a soundcloud track that is not a remix or radio edit that has been released in the spring, with average number of tags and average song length, the predicted engagement is around 12 (12.25665).
+
+For every month that has passed since the release date of the song, the number of engagement increases by 0.50539. This is quite reasonable due to the fact that after time passes, people who have already engaged (liked/commented/reposted) with the track now just listen to it. Tracks are most engaged with within the first month of their release. Therefore, as time passes the value of the engagement variable gets farther from 1 and less people interact with the track
+
+Holding all else constant, the engagement with a particular track is 2.60872 points higher for those songs that are remixes and radio edits compared to those that are original songs. This actually makes sense when considering the use of the Soundcloud application as there are usually a high variety of remixes on a particular track, so the engagement becomes spread between these tracks (while there is only one version of the original track for users to engage with)
+
+With one more tag added onto a track, the number of engagement increases by 0.31683. This is due to the fact that increasing the number of hashtags utilized on a track will increase the chance of a particular song being found (especially the more general tag used like "#EDM" for example). When you want to listen to particular types of music, you can use these hashtags and play a variety of songs that maintain the keyword. The search feature on Soundcloud allows you to search through hashtags, so users can search #EDM and find only songs with that particular tag and have a higher chance of listening to it rather than searching for something specific and liking/commenting/reposting.
+
+When comparing the timing of the release of a particular track, it appears that engagement is -0.44271 lower in the Summer than in the Spring, 5.55963 higher in the Fall than in the Spring, and 5.80647 higher in the Winter than in the Spring. In the summer and spring months users are more engaged with EDM music than in the fall or winter.
+
+```{r}
+newdata = songs[1,]
+newdata$Name = "Song x"
+newdata$Artist = "Artist x"
+newdata$Likes = 1000
+newdata$Com = 10
+newdata$Rep = 50
+newdata$LiCount = 10000
+newdata$sincerelease = 0
+newdata$fdY = 0
+newdata$FoCount = 1000
+newdata$NumTags = 10
+newdata$Len = 180
+newdata$lencent = 180 - mean(Len)
+newdata$NumTracks = 10
+newdata$ProUser = 0
+newdata$NumFollow = 100
+newdata$RemixY = 0
+newdata$country = 0
+
+newdata2 = songs[1,]
+newdata2$Name = "Song x"
+newdata2$Artist = "Artist x"
+newdata2$Likes = 1000
+newdata2$Com = 10
+newdata2$Rep = 50
+newdata2$LiCount = 10000
+newdata2$sincerelease = 0
+newdata2$fdY = 0
+newdata2$FoCount = 1000
+newdata2$NumTags = 10
+newdata2$Len = 240
+newdata2$lencent = 240 - mean(Len)
+newdata2$NumTracks = 10
+newdata2$ProUser = 0
+newdata2$NumFollow = 100
+newdata2$RemixY = 0
+newdata2$country = 0
+
+newdata
+newdata2
+
+predeng = predict(songsfinal, newdata, interval = "prediction")
+predeng
+
+predeng2 = predict(songsfinal, newdata2, interval = "prediction")
+predeng2
+```
+
+Using the prediction function in R, I created two tracks with everything constant besides their length in order to see the impact of length on engagement. One had a song length of 3 minutes and the other 4 minutes (180 and 240 seconds). With my prediction, it seems that holding all else constant, increasing the song length by 1 minute (60 seconds) will ultimately increase engagement by around 3 points (16.49978 - 13.76393).
+
+While studying this particular topic, I realized how difficult it is to create an accurate model to predict the engagement of a particular song due to the non-linear trend of likes, comments, and reposts over time. With each month, the number of likes/comments/reposts change randomly - they may increase or decrease as songs can come back into the spotlight after years due to spontaneous changes in preferences in popular culture - and its hard to account for this. I attempted to do so with the sincerelease variable. I also only used 75 songs that were based upon my own preferences with this type of music due to the unavailability of public datasets for Soundcloud online. This is quite a large limitation; further studies should use a much larger dataset to attempt to see which variables are truly good predictors of engagement. My scope of inference is also limited to just EDM music on the website; there is a variety of other types of music available that can be researched in further studies.
+
+In the end, it appears that the season of release, the time elapsed since the track has been released, the number of tags utilized, the length of the song, and if the song is a remix or not are valid predictors of user engagement with a particular track.
+
+```{r}
+###DJ Friend checking potential
+nd = songs[1,]
+nd$Name = "Oceans"
+nd$Artist = "Dexter"
+nd$sincerelease = 1
+nd$Likes = 117
+nd$Com = 4
+nd$Rep = 18
+nd$LiCount = 2819
+nd$engage = 2819/(117+4*3+18*2)
+nd$fdY = 0
+nd$FoCount = 3786
+nd$NumTags = 0
+nd$Len = 220
+nd$NumTracks = 13
+nd$ProUser = 0
+nd$NumFollow = 76
+nd$RemixY = 1
+nd$country = 0
+
+nd
+
+predeng = predict(songsfinal, nd, interval = "prediction")
+predeng
+
+difference = nd$engage - 16.08087
+difference
+```
+
+I decided to utilize my regression model to see if I could accurately predict my friend's track engagement. He posted a song exactly a month ago, and despite my seemingly poor model, I predicted the engagement with my friend Dexter's track not too poorly (a difference of 1.003978). With this, I feel that maybe my model may be far more accurate predicting tracks that fall within one or two months of the release date.
